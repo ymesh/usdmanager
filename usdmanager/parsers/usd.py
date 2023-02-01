@@ -27,8 +27,16 @@ from Qt.QtCore import QDir, QFile, QFileInfo, Slot
 from Qt.QtGui import QIcon
 
 from .. import utils
-from ..constants import FILE_FORMAT_USD, FILE_FORMAT_USDA, FILE_FORMAT_USDC, FILE_FORMAT_USDZ,\
-    USD_AMBIGUOUS_EXTS, USD_ASCII_EXTS, USD_CRATE_EXTS, USD_ZIP_EXTS
+from ..constants import (
+    FILE_FORMAT_USD,
+    FILE_FORMAT_USDA,
+    FILE_FORMAT_USDC,
+    FILE_FORMAT_USDZ,
+    USD_AMBIGUOUS_EXTS,
+    USD_ASCII_EXTS,
+    USD_CRATE_EXTS,
+    USD_ZIP_EXTS,
+)
 from ..parser import AbstractExtParser, SaveFileError
 
 
@@ -38,21 +46,28 @@ logging.basicConfig()
 
 
 NT = os.name == "nt"
-NT_REGEX = re.compile(r'^[a-zA-Z]:[/\\]')
+NT_REGEX = re.compile(r"^[a-zA-Z]:[/\\]")
 
 
 class UsdAsciiParser(AbstractExtParser):
-    """ USD ASCII files.
+    """USD ASCII files.
 
     Treat as plain text. This is the simplest of the Usd parsers, which other USD parsers should inherit from.
     """
+
     exts = USD_ASCII_EXTS
     fileFormat = FILE_FORMAT_USDA
 
     def __init__(self, *args, **kwargs):
         super(UsdAsciiParser, self).__init__(*args, **kwargs)
         self.regex = None
-        self.plugins.append((QIcon(":/images/images/usd.png"), "Open with usdview...", self.parent().launchUsdView))
+        self.plugins.append(
+            (
+                QIcon(":/images/images/usd.png"),
+                "Open with usdview...",
+                self.parent().launchUsdView,
+            )
+        )
         self.usdArrayRegEx = re.compile(
             r"((?:\s*(?:\w+\s+)?\w+\[\]\s+[\w:]+\s*=|\s*\d+:)\s*\[)"  # Array attribute definition and equal sign, or a frame number and colon, plus the opening bracket.
             r"\s*(.*)\s*"  # Everything inside the square brackets.
@@ -61,12 +76,11 @@ class UsdAsciiParser(AbstractExtParser):
 
     @Slot()
     def compile(self):
-        """ Compile regular expression to find links in USD files.
-        """
+        """Compile regular expression to find links in USD files."""
         self.regex = utils.usdRegEx(self.parent().programs.keys())
 
     def parse(self, nativeAbsPath, fileInfo, link):
-        """ Parse a file for links, generating a plain text version and HTML version of the file text.
+        """Parse a file for links, generating a plain text version and HTML version of the file text.
 
         :Parameters:
             nativeAbsPath : `str`
@@ -82,7 +96,7 @@ class UsdAsciiParser(AbstractExtParser):
         return super(UsdAsciiParser, self).parse(nativeAbsPath, fileInfo, link)
 
     def parseMatch(self, match, linkPath, nativeAbsPath, fileInfo):
-        """ Parse a RegEx match of a path to another file.
+        """Parse a RegEx match of a path to another file.
 
         Override for specific language parsing.
 
@@ -107,16 +121,22 @@ class UsdAsciiParser(AbstractExtParser):
         # We then have to re-escape the path before inserting it into HTML.
         linkPath = unescape(linkPath)
         expanded_path = utils.expandPath(
-            linkPath, nativeAbsPath,
+            linkPath,
+            nativeAbsPath,
             self.sdf_format_args,
-            extractedDir=self.extractedDir)
+            extractedDir=self.extractedDir,
+        )
         if QFileInfo(linkPath).isAbsolute():
             fullPath = QFileInfo(expanded_path).absoluteFilePath()
-            logger.debug("Parsed link is absolute (%s). Expanded to %s", linkPath, fullPath)
+            logger.debug(
+                "Parsed link is absolute (%s). Expanded to %s", linkPath, fullPath
+            )
         else:
             # Relative path from the current file to the link.
             fullPath = fileInfo.dir().absoluteFilePath(expanded_path)
-            logger.debug("Parsed link is relative (%s). Expanded to %s", linkPath, fullPath)
+            logger.debug(
+                "Parsed link is relative (%s). Expanded to %s", linkPath, fullPath
+            )
 
         # Override any previously set sdf format args.
         local_sdf_args = self.sdf_format_args.copy()
@@ -124,12 +144,20 @@ class UsdAsciiParser(AbstractExtParser):
             for kv in match.group(3).split("&"):
                 k, v = kv.split("=", 1)
                 expanded_path = utils.expandPath(
-                    v, nativeAbsPath, self.sdf_format_args,
-                    extractedDir=self.extractedDir)
+                    v,
+                    nativeAbsPath,
+                    self.sdf_format_args,
+                    extractedDir=self.extractedDir,
+                )
                 local_sdf_args[k] = expanded_path.replace("&", "+").replace("=", ":")
         if local_sdf_args:
-            queryParams = ["sdf=" + "+".join("{}:{}".format(k, v) for k, v in
-                           sorted(local_sdf_args.items(), key=lambda x: x[0]))]
+            queryParams = [
+                "sdf="
+                + "+".join(
+                    "{}:{}".format(k, v)
+                    for k, v in sorted(local_sdf_args.items(), key=lambda x: x[0])
+                )
+            ]
         else:
             queryParams = []
 
@@ -144,35 +172,45 @@ class UsdAsciiParser(AbstractExtParser):
         def pathForLink(path):
             """Need three slashes before drive letter on Windows; this prepends one, so
             with the usual two URL slashes we'll get the proper format."""
-            return '/' + path if NT and NT_REGEX.match(fullPath) else path
+            return "/" + path if NT and NT_REGEX.match(fullPath) else path
 
         # Make the HTML link.
         if self.exists[fullPath]:
             _, fullPathExt = splitext(fullPath)
-            if fullPathExt[1:] in USD_CRATE_EXTS or (fullPathExt[1:] in USD_AMBIGUOUS_EXTS and
-                                                     utils.isUsdCrate(fullPath)):
+            if fullPathExt[1:] in USD_CRATE_EXTS or (
+                fullPathExt[1:] in USD_AMBIGUOUS_EXTS and utils.isUsdCrate(fullPath)
+            ):
                 queryParams.insert(0, "binary=1")
-                link = '<a class="binary" href="file://{}?{}">{}</a>'.format(pathForLink(fullPath),
-                                                                             "&".join(queryParams), escape(linkPath))
-                logger.debug('parseMatch: created binary link <%s> for path <%s>', link, linkPath)
+                link = '<a class="binary" href="file://{}?{}">{}</a>'.format(
+                    pathForLink(fullPath), "&".join(queryParams), escape(linkPath)
+                )
+                logger.debug(
+                    "parseMatch: created binary link <%s> for path <%s>", link, linkPath
+                )
             else:
                 queryStr = "?" + "&".join(queryParams) if queryParams else ""
-                link = '<a href="file://{}{}">{}</a>'.format(pathForLink(fullPath), queryStr, escape(linkPath))
-                logger.debug('parseMatch: created link <%s> for path <%s>', link, linkPath)
+                link = '<a href="file://{}{}">{}</a>'.format(
+                    pathForLink(fullPath), queryStr, escape(linkPath)
+                )
+                logger.debug(
+                    "parseMatch: created link <%s> for path <%s>", link, linkPath
+                )
             return link
-        elif '*' in linkPath or '<UDIM>' in linkPath or '.#.' in linkPath:
+        elif "*" in linkPath or "<UDIM>" in linkPath or ".#." in linkPath:
             # Create an orange link for files with wildcards in the path,
             # designating zero or more files may exist.
             queryStr = "?" + "&".join(queryParams) if queryParams else ""
             return '<a title="Multiple files may exist" class="mayNotExist" href="file://{}{}">{}</a>'.format(
-                pathForLink(fullPath), queryStr, escape(linkPath))
+                pathForLink(fullPath), queryStr, escape(linkPath)
+            )
 
         queryStr = "?" + "&".join(queryParams) if queryParams else ""
         return '<a title="File not found" class="badLink" href="file://{}{}">{}</a>'.format(
-            pathForLink(fullPath), queryStr, escape(linkPath))
+            pathForLink(fullPath), queryStr, escape(linkPath)
+        )
 
     def parseLongLine(self, line):
-        """ Process a long line. Link parsing is skipped, and long USD arrays are truncated in the middle.
+        """Process a long line. Link parsing is skipped, and long USD arrays are truncated in the middle.
 
         :Parameters:
             line : `str`
@@ -197,27 +235,31 @@ class UsdAsciiParser(AbstractExtParser):
                 split = "),"
             else:
                 split = ","
-            innerData = innerData.split(split, 1)[0] + split +\
-                        "<span title='Long array truncated for display performance'> &hellip; </span>" +\
-                        innerData.rsplit(split, 1)[-1].lstrip()
+            innerData = (
+                innerData.split(split, 1)[0]
+                + split
+                + "<span title='Long array truncated for display performance'> &hellip; </span>"
+                + innerData.rsplit(split, 1)[-1].lstrip()
+            )
 
             return "{}{}{}\n".format(match.group(1), innerData, match.group(3))
         return super(UsdAsciiParser, self).parseLongLine(line)
 
 
 class UsdCrateParser(UsdAsciiParser):
-    """ Parse USD file assuming it is a crate file.
+    """Parse USD file assuming it is a crate file.
 
     Don't bother checking the fist line for PXR-USDC. If this is a valid ASCII USD file and not binary, but we use this
     parser accidentally, the file will load slower (since we do a usdcat conversion) but won't break anything.
     """
+
     binary = True
     exts = USD_CRATE_EXTS
     fileFormat = FILE_FORMAT_USDC
     icon = utils.icon("binary")
 
     def acceptsFile(self, fileInfo, link):
-        """ Accept .usdc files, or .usd files that do have a true binary query string value (i.e. .usd files we've
+        """Accept .usdc files, or .usd files that do have a true binary query string value (i.e. .usd files we've
         already confirmed are crate).
 
         :Parameters:
@@ -227,11 +269,13 @@ class UsdCrateParser(UsdAsciiParser):
                 Full URL, potentially with query string
         """
         ext = fileInfo.suffix()
-        return ext in self.exts or (ext in USD_AMBIGUOUS_EXTS and utils.queryItemBoolValue(link, "binary"))
+        return ext in self.exts or (
+            ext in USD_AMBIGUOUS_EXTS and utils.queryItemBoolValue(link, "binary")
+        )
 
     @staticmethod
     def generateTempFile(fileName, tmpDir=None):
-        """ Generate a temporary ASCII USD file that the user can edit.
+        """Generate a temporary ASCII USD file that the user can edit.
 
         :Parameters:
             fileName : `str`
@@ -251,7 +295,7 @@ class UsdCrateParser(UsdAsciiParser):
         return self.parent().readBinaryFile(path, self)
 
     def write(self, qFile, filePath, tab, tmpDir):
-        """ Write out the text to an ASCII file, then convert it to crate.
+        """Write out the text to an ASCII file, then convert it to crate.
 
         :Parameters:
             qFile : `QtCore.QFile`
@@ -273,20 +317,23 @@ class UsdCrateParser(UsdAsciiParser):
             utils.usdcat(tmpPath, QDir.toNativeSeparators(filePath), format="usdc")
         except Exception:
             logger.exception("Save failed on USD crate conversion")
-            raise SaveFileError("The file could not be saved due to a usdcat error!", traceback.format_exc())
+            raise SaveFileError(
+                "The file could not be saved due to a usdcat error!",
+                traceback.format_exc(),
+            )
         tab.parser = self
         tab.fileFormat = self.fileFormat
         os.remove(tmpPath)
 
 
 class UsdParser(UsdAsciiParser):
-    """ Parse ambiguous USD files that may be ASCII or crate.
-    """
+    """Parse ambiguous USD files that may be ASCII or crate."""
+
     exts = USD_AMBIGUOUS_EXTS
     fileFormat = FILE_FORMAT_USD
 
     def acceptsFile(self, fileInfo, link):
-        """ Accept .usd files that do not have a true binary query string in the URL (i.e. we haven't yet opened this
+        """Accept .usd files that do not have a true binary query string in the URL (i.e. we haven't yet opened this
         file to determine if it is crate, or we have checked and it wasn't crate).
 
         :Parameters:
@@ -295,10 +342,12 @@ class UsdParser(UsdAsciiParser):
             link : `QtCore.QUrl`
                 Full URL, potentially with query string
         """
-        return fileInfo.suffix() in self.exts and not utils.queryItemBoolValue(link, "binary")
+        return fileInfo.suffix() in self.exts and not utils.queryItemBoolValue(
+            link, "binary"
+        )
 
     def setBinary(self, binary):
-        """ Set if the parser is currently parsing a binary or ASCII file.
+        """Set if the parser is currently parsing a binary or ASCII file.
 
         :Parameters:
             binary : `bool`
@@ -316,7 +365,8 @@ class UsdParser(UsdAsciiParser):
         with open(path) as f:
             # Read in the first line. If it's a binary USD file,
             # convert it to a temp ASCII file for viewing/editing.
-            if f.readline().startswith("PXR-USDC"):
+            # if f.readline().startswith("PXR-USDC"):
+            if utils.isUsdCrate(path):
                 self.setBinary(True)
                 return self.parent().readBinaryFile(path, UsdCrateParser)
 
@@ -326,7 +376,7 @@ class UsdParser(UsdAsciiParser):
             return f.readlines()
 
     def write(self, *args, **kwargs):
-        """ Write out the text to an ASCII or crate file.
+        """Write out the text to an ASCII or crate file.
 
         :Parameters:
             qFile : `QtCore.QFile`
@@ -347,14 +397,14 @@ class UsdParser(UsdAsciiParser):
 
 
 class UsdzParser(UsdParser):
-    """ Parse zipped USD archives.
-    """
+    """Parse zipped USD archives."""
+
     exts = USD_ZIP_EXTS
     fileFormat = FILE_FORMAT_USDZ
     icon = utils.icon("zip", utils.icon("package-x-generic"))
 
     def read(self, path, layer=None, cache=None, tmpDir=None):
-        """ Read in a USD zip (.usdz) file via usdzip, uncompressing to a temp directory.
+        """Read in a USD zip (.usdz) file via usdzip, uncompressing to a temp directory.
 
         :Parameters:
             path : `str`
@@ -380,8 +430,10 @@ class UsdzParser(UsdParser):
         cache = cache or {}
 
         # Cache the unzipped directory so we can use it again later without reconversion if it's still newer.
-        if (path in cache and
-                QFileInfo(cache[path]).lastModified() > QFileInfo(path).lastModified()):
+        if (
+            path in cache
+            and QFileInfo(cache[path]).lastModified() > QFileInfo(path).lastModified()
+        ):
             usdPath = cache[path]
             logger.debug("Reusing cached directory %s for zip file %s", usdPath, path)
         else:
@@ -390,9 +442,9 @@ class UsdzParser(UsdParser):
             cache[path] = usdPath
 
         # Check for a nested usdz reference (e.g. @set.usdz[areas/shire.usdz[architecture/BilboHouse/Table.usd]]@)
-        if layer and '[' in layer:
+        if layer and "[" in layer:
             # Get the next level of .usdz file and unzip it.
-            layer1, layer2 = layer.split('[', 1)
+            layer1, layer2 = layer.split("[", 1)
             dest = utils.getUsdzLayer(usdPath, layer1, path)
             return self.readUsdzFile(dest, layer2)
 
@@ -400,7 +452,7 @@ class UsdzParser(UsdParser):
         return utils.getUsdzLayer(usdPath, layer, path) + args
 
     def write(self, *args, **kwargs):
-        """ Write out a USD zip file.
+        """Write out a USD zip file.
 
         :Parameters:
             qFile : `QtCore.QFile`

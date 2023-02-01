@@ -41,6 +41,7 @@ logging.basicConfig()
 
 try:
     from pxr import Ar
+
     resolver = Ar.GetResolver()
 except ImportError:
     logger.warn("Unable to create AssetResolver - Asset links may not work correctly")
@@ -97,9 +98,9 @@ ICON_ALIASES = {
 
 
 def expandPath(path, parentPath=None, sdf_format_args=None, extractedDir=None):
-    """ Expand and normalize a path that may have variables in it.
+    """Expand and normalize a path that may have variables in it.
     Do not use this for URLs with query strings.
-    
+
     :Parameters:
         path : `str`
             File path
@@ -118,7 +119,7 @@ def expandPath(path, parentPath=None, sdf_format_args=None, extractedDir=None):
     """
     # Expand the ~ part of any path first. The asset resolver doesn't understand it.
     path = os.path.expanduser(os.path.normpath(path))
-    
+
     if resolver is not None:
         try:
             # ConfigureResolverForAsset no longer exists under Ar 2.0;
@@ -134,29 +135,34 @@ def expandPath(path, parentPath=None, sdf_format_args=None, extractedDir=None):
                 else:
                     anchoredPath = resolver.AnchorRelativePath(parentPath, path)
                 resolved = resolver.Resolve(anchoredPath)
-                
+
                 # https://graphics.pixar.com/usd/docs/Usdz-File-Format-Specification.html#UsdzFileFormatSpecification-USDConstraints-AssetResolution
                 # If resolving relative to the layer fails in a usdz archive,
                 # try to resolve based on the archive's default layer path.
                 if extractedDir and not os.path.exists(resolved):
-                    default_layer = os.path.join(extractedDir, 'defaultLayer.usd')
+                    default_layer = os.path.join(extractedDir, "defaultLayer.usd")
                     if hasattr(resolver, "CreateIdentifier"):
                         anchoredPath = resolver.CreateIdentifier(default_layer, path)
                     else:
                         anchoredPath = resolver.AnchorRelativePath(default_layer, path)
                     resolved = resolver.Resolve(anchoredPath)
         except Exception as e:
-            logger.warn("Failed to resolve Asset path %s with parent %s: %s", path, parentPath, e)
+            logger.warn(
+                "Failed to resolve Asset path %s with parent %s: %s",
+                path,
+                parentPath,
+                e,
+            )
         else:
             if resolved:
                 return str(resolved)
-    
+
     # Return this best-attempt if all else fails.
     return QtCore.QDir.cleanPath(os.path.expandvars(path))
 
 
 def expandUrl(path, parentPath=None):
-    """ Expand and normalize a URL that may have variables in it and a query string after it.
+    """Expand and normalize a URL that may have variables in it and a query string after it.
 
     :Parameters:
         path : `str`
@@ -176,19 +182,21 @@ def expandUrl(path, parentPath=None):
         path, query = path.split("?", 1)
     else:
         query = None
-    url = QtCore.QUrl.fromLocalFile(os.path.abspath(str(expandPath(path, parentPath, sdf_format_args))))
+    url = QtCore.QUrl.fromLocalFile(
+        os.path.abspath(str(expandPath(path, parentPath, sdf_format_args)))
+    )
     if query:
         url.setQuery(query)
     return url
 
 
 def strToUrl(path):
-    """ Properly set the query parameter of a URL, which doesn't seem to set QUrl.hasQuery properly unless using
+    """Properly set the query parameter of a URL, which doesn't seem to set QUrl.hasQuery properly unless using
     .setQuery.
-    
+
     Use this when a path might have a query string after it or start with file://. In all other cases.
     QUrl.fromLocalFile should work fine.
-    
+
     :Parameters:
         path : `str`
             URL string
@@ -201,20 +209,20 @@ def strToUrl(path):
         path, query = path.split("?", 1)
     else:
         query = None
-    
+
     if path.startswith("file://"):
         url = QtCore.QUrl(path)
     else:
         url = QtCore.QUrl.fromLocalFile(path)
-    
+
     if query:
         url.setQuery(query)
     return url
 
 
 def stripFileScheme(path):
-    """ Strip any file URI scheme from the beginning of a path.
-    
+    """Strip any file URI scheme from the beginning of a path.
+
     Parameters:
         path : `str`
             File path or file URL
@@ -227,9 +235,9 @@ def stripFileScheme(path):
 
 
 def findModules(subdir):
-    """ Find and import all modules in a subdirectory of this project.
+    """Find and import all modules in a subdirectory of this project.
     Ignores any files starting with an underscore or tilde.
-    
+
     :Parameters:
         subdir : `str`
             Subdirectory
@@ -243,7 +251,7 @@ def findModules(subdir):
     logger.info("Searching for *.py plugins in %s", pluginPath)
     for f in glob(os.path.join(pluginPath, "*.py")):
         moduleName = os.path.splitext(os.path.basename(f))[0]
-        if moduleName.startswith('_') or moduleName.startswith('~'):
+        if moduleName.startswith("_") or moduleName.startswith("~"):
             continue
         module = importlib.import_module("..{}.{}".format(subdir, moduleName), __name__)
         modules.append(module)
@@ -251,8 +259,8 @@ def findModules(subdir):
 
 
 def generateTemporaryUsdFile(usdFileName, tmpDir=None):
-    """ Generate a temporary ASCII USD file that the user can edit.
-    
+    """Generate a temporary ASCII USD file that the user can edit.
+
     :Parameters:
         usdFileName : `str`
             Binary USD file path
@@ -272,7 +280,7 @@ def generateTemporaryUsdFile(usdFileName, tmpDir=None):
 
 
 def mkdtemp(dir, **kwargs):
-    """ Make a temp dir, safely ensuring the parent temp dir still exists.
+    """Make a temp dir, safely ensuring the parent temp dir still exists.
 
     :Parameters:
         dir : `str`
@@ -295,7 +303,7 @@ def mkdtemp(dir, **kwargs):
 
 
 def mkstemp(dir, **kwargs):
-    """ Make a temp file, safely ensuring the parent temp dir still exists.
+    """Make a temp file, safely ensuring the parent temp dir still exists.
 
     :Parameters:
         dir : `str`
@@ -318,7 +326,7 @@ def mkstemp(dir, **kwargs):
 
 
 def icon(name, fallback=None):
-    """ Get an icon, using theme-based configs to look up icon name aliases.
+    """Get an icon, using theme-based configs to look up icon name aliases.
 
     :Parameters:
         name : `str`
@@ -333,7 +341,11 @@ def icon(name, fallback=None):
     try:
         alias = ICON_ALIASES[QIcon.themeName()][name]
     except KeyError:
-        return QIcon.fromTheme(name) if fallback is None else QIcon.fromTheme(name, fallback)
+        return (
+            QIcon.fromTheme(name)
+            if fallback is None
+            else QIcon.fromTheme(name, fallback)
+        )
     else:
         # Assume we passed in a resource path instead of a theme icon.
         if alias.startswith(":"):
@@ -344,8 +356,8 @@ def icon(name, fallback=None):
 
 
 def usdcat(inputFile, outputFile, format=None):
-    """ Generate a temporary ASCII USD file that the user can edit.
-    
+    """Generate a temporary ASCII USD file that the user can edit.
+
     :Parameters:
         inputFile : `str`
             Input file name
@@ -359,20 +371,35 @@ def usdcat(inputFile, outputFile, format=None):
     :Raises ValueError:
         If invalid format given compared to output file extension.
     """
-    cmd = ['usdcat', inputFile, '-o', outputFile]
+    # XXX fix for usdcat name for Windows Maya USD
+    usdcat_cmd = "usdcat"
+    if sys.platform == "win32":
+        usdcat_cmd = "usdcat.cmd"
+
+    cmd = [usdcat_cmd, inputFile, "-o", outputFile]
     if format and outputFile.endswith(".usd"):
         # For usdcat, use of --usdFormat requires output file end with '.usd' extension.
-        cmd += ['--usdFormat', format]
+        cmd += ["--usdFormat", format]
     logger.debug(subprocess.list2cmdline(cmd))
     try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        # print(f"* sys.platform = {sys.platform}")
+        # print(f"* sys.version = {sys.version}")
+        ver_parts = sys.version.split(" ")[0].split(".")
+        if sys.platform == "darwin":
+            # XXX add shell=True for macOS Python 3.9
+            if ver_parts[0] == "3" and ver_parts[1] == "9":
+                subprocess.call(" ".join(cmd), stderr=subprocess.STDOUT, shell=True)
+            else:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        else:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         raise OSError("Failed to convert file {}: {}".format(inputFile, e.output))
 
 
 def usdzip(inputs, dest):
-    """ Zip or unzip a usdz format file.
-    
+    """Zip or unzip a usdz format file.
+
     :Parameters:
         inputs : `str` | `list`
             Input file name(s). String or list of strings
@@ -395,8 +422,8 @@ def usdzip(inputs, dest):
 
 
 def unzip(path, tmpDir=None):
-    """ Unzip a usdz format file to a temporary directory.
-    
+    """Unzip a usdz format file to a temporary directory.
+
     :Parameters:
         path : `str`
             Input .usdz file
@@ -412,17 +439,17 @@ def unzip(path, tmpDir=None):
         When a ZIP file would require ZIP64 functionality but that has not been enabled
     """
     from zipfile import ZipFile
-    
+
     destDir = mkdtemp(prefix="usdmanager_usdz_", dir=tmpDir)
     logger.debug("Extracting %s to %s", path, destDir)
-    with ZipFile(QtCore.QDir.toNativeSeparators(path), 'r') as zipRef:
+    with ZipFile(QtCore.QDir.toNativeSeparators(path), "r") as zipRef:
         zipRef.extractall(destDir)
     return destDir
 
 
 def getUsdzLayer(usdzDir, layer=None, usdz=None):
-    """ Get a layer from an unzipped usdz archive.
-    
+    """Get a layer from an unzipped usdz archive.
+
     :Parameters:
         usdzDir : `str`
             Unzipped directory path
@@ -443,8 +470,10 @@ def getUsdzLayer(usdzDir, layer=None, usdz=None):
         if os.path.exists(destFile):
             return destFile
         else:
-            raise ValueError("Layer {} not found in usdz archive {}".format(layer, usdzDir))
-    
+            raise ValueError(
+                "Layer {} not found in usdz archive {}".format(layer, usdzDir)
+            )
+
     if usdz is not None:
         try:
             from pxr import Usd
@@ -456,7 +485,7 @@ def getUsdzLayer(usdzDir, layer=None, usdz=None):
                 for fileName in zipFile.GetFileNames():
                     return os.path.join(usdzDir, fileName)
             raise ValueError("Default layer not found in usdz archive!")
-    
+
     # Fallback to checking the files on disk instead of using USD.
     destFile = os.path.join(usdzDir, "defaultLayer.usd")
     if os.path.exists(destFile):
@@ -472,7 +501,7 @@ def getUsdzLayer(usdzDir, layer=None, usdz=None):
 
 
 def humanReadableSize(size):
-    """ Get a human-readable file size string from bytes.
+    """Get a human-readable file size string from bytes.
 
     :Parameters:
         size : `int`
@@ -490,9 +519,9 @@ def humanReadableSize(size):
 
 
 def isUsdCrate(path):
-    """ Check if a file is a USD crate file by reading in the first line of
+    """Check if a file is a USD crate file by reading in the first line of
     the file. Doesn't check the file extension.
-    
+
     :Parameters:
         path : `str`
             USD file path
@@ -506,8 +535,8 @@ def isUsdCrate(path):
 
 
 def isPy3():
-    """ Check if the application is running Python 3.
-    
+    """Check if the application is running Python 3.
+
     :Returns:
         If the application is running Python 3.
     :Rtype:
@@ -517,7 +546,7 @@ def isPy3():
 
 
 def round(value, decimals=0):
-    """ Python 2/3 compatible rounding function. Lifted from
+    """Python 2/3 compatible rounding function. Lifted from
     http://python3porting.com/differences.html#rounding-behavior
 
     :Parameters:
@@ -530,7 +559,7 @@ def round(value, decimals=0):
     :Rtype:
         `float`
     """
-    p = 10 ** decimals
+    p = 10**decimals
     if value > 0:
         return float(math.floor((value * p) + 0.5)) / p
     else:
@@ -538,7 +567,7 @@ def round(value, decimals=0):
 
 
 def isUsdExt(ext):
-    """ Check if the given extension is an expected USD file extension.
+    """Check if the given extension is an expected USD file extension.
 
     :Parameters:
         ext : `str`
@@ -547,11 +576,11 @@ def isUsdExt(ext):
     :Rtype:
         `bool`
     """
-    return ext.lstrip('.') in USD_EXTS
+    return ext.lstrip(".") in USD_EXTS
 
 
 def isUsdFile(path):
-    """ Check if the given file is a USD file based on the file's extension.
+    """Check if the given file is a USD file based on the file's extension.
 
     :Parameters:
         path : `str`
@@ -564,8 +593,8 @@ def isUsdFile(path):
 
 
 def loadUiWidget(path, parent=None, source_path=None):
-    """ Load a Qt Designer .ui file and return an instance of the user interface
-    
+    """Load a Qt Designer .ui file and return an instance of the user interface
+
     :Parameters:
         path : `str`
             Absolute path to .ui file
@@ -579,7 +608,7 @@ def loadUiWidget(path, parent=None, source_path=None):
         `QtWidgets.QWidget`
     """
     from Qt import QtCompat
-    
+
     if not os.path.exists(path) and not os.path.isabs(path):
         # Assume the .ui file lives in this directory.
         if source_path is None:
@@ -588,22 +617,22 @@ def loadUiWidget(path, parent=None, source_path=None):
             path = os.path.join(os.path.dirname(os.path.realpath(source_path)), path)
     ui = QtCompat.loadUi(path, parent)
     if parent:
-        #ui.setParent(parent)
+        # ui.setParent(parent)
         for member in dir(ui):
-            if not member.startswith('__') and member != 'staticMetaObject':
+            if not member.startswith("__") and member != "staticMetaObject":
                 setattr(parent, member, getattr(ui, member))
     return ui
 
 
 @contextmanager
 def overrideCursor(cursor=QtCore.Qt.WaitCursor):
-    """ For use with the "with" keyword, so the override cursor is always
+    """For use with the "with" keyword, so the override cursor is always
     restored via a try/finally block, even if the commands in-between fail.
-    
+
     Example:
         with overrideCursor():
             # do something that may raise an error
-    """    
+    """
     QApplication.setOverrideCursor(cursor)
     try:
         yield
@@ -612,9 +641,9 @@ def overrideCursor(cursor=QtCore.Qt.WaitCursor):
 
 
 def queryItemValue(url, key, default=None):
-    """ Qt.py compatibility, since Qt5 introduced QUrlQuery, but Qt.py doesn't support that.
+    """Qt.py compatibility, since Qt5 introduced QUrlQuery, but Qt.py doesn't support that.
     PyQt4 just uses QUrl for everything, including hasQueryItem and queryItemValue.
-    
+
     :Parameters:
         url : `QtCore.QUrl`
             Full URL with query string
@@ -644,7 +673,7 @@ def queryItemValue(url, key, default=None):
 
 
 def queryItemBoolValue(url, key, default=False):
-    """ Get a boolean value from a query string.
+    """Get a boolean value from a query string.
 
     :Parameters:
         url : `QtCore.QUrl`
@@ -663,9 +692,9 @@ def queryItemBoolValue(url, key, default=False):
 
 
 def sdfQuery(link):
-    """ Process a link's query items to see if it has our special sdf entry.
+    """Process a link's query items to see if it has our special sdf entry.
     This is used to pass along :SDF_FORMAT_ARGS: key/value pairs to downstream files.
-    
+
     :Parameters:
         link : `QtCore.QUrl`
             Link
@@ -676,7 +705,9 @@ def sdfQuery(link):
     """
     sdf_format_args = {}
     try:
-        for kv in queryItemValue(link, "sdf", "").split("+"):  # TODO: Figure out something that works better as key=value& separators.
+        for kv in queryItemValue(link, "sdf", "").split(
+            "+"
+        ):  # TODO: Figure out something that works better as key=value& separators.
             k, v = kv.split(":", 1)
             sdf_format_args[k] = v
     except ValueError:
@@ -688,7 +719,7 @@ def sdfQuery(link):
 
 
 def urlFragmentToQuery(url):
-    """ Convert a URL with a fragment (e.g. url#?foo=bar) to a URL with a query string.
+    """Convert a URL with a fragment (e.g. url#?foo=bar) to a URL with a query string.
 
     Normally, this app treats that as a file to NOT reload, using the query string as a mechanism to modify the
     currently loaded file, such as jumping to a line number. We instead convert this to a "normal" URL with a query
@@ -711,20 +742,22 @@ def urlFragmentToQuery(url):
 
 
 def usdRegEx(exts):
-    """ RegEx to find other file paths in USD-based text files.
-    
+    """RegEx to find other file paths in USD-based text files.
+
     :Parameters:
         exts:
             Iterable of `str` file path extensions without the starting dot.
     """
     return re.compile(
-        r'(?:[\'"@]+)'                    # 1 or more single quote, double quote, or at symbol.
-        r'('                              # Group 1: Path. This is the main group we are looking for. Matches based on extension before the pipe, or variable after the pipe.
-            r'[^\t\n\r\f\v\'"]*?'         # 0 or more (greedy) non-whitespace characters (regular spaces are ok) and no quotes followed by a period, then 1 of the acceptable file extensions. NOTE: Backslash exclusion removed for Windows support; make sure this doesn't negatively affect other systems.
-            r'\.(?:'+'|'.join(exts)+r')'  # followed by a period, then 1 of the acceptable file extensions
-            r'|\${[\w/${}:.-]+}'          # One or more of these characters -- A-Za-z0-9_-/${}:. -- inside the variable curly brackets -- ${}
-        r')'                              # end group 1
-        r'(?:\[(.*?)\])?'                 # Optional layer reference for a usdz file as group 2. TODO: Figure out how to only match this if the extension matched was .usdz (e.g. foo.usdz[path/to/file/within/package.usd])
-        r'(?::SDF_FORMAT_ARGS:(.*?))?'    # Optional :SDF_FORMAT_ARGS:key=value&foo=bar, with the query string parameters as group 3
+        r'(?:[\'"@]+)'  # 1 or more single quote, double quote, or at symbol.
+        r"("  # Group 1: Path. This is the main group we are looking for. Matches based on extension before the pipe, or variable after the pipe.
+        r'[^\t\n\r\f\v\'"]*?'  # 0 or more (greedy) non-whitespace characters (regular spaces are ok) and no quotes followed by a period, then 1 of the acceptable file extensions. NOTE: Backslash exclusion removed for Windows support; make sure this doesn't negatively affect other systems.
+        r"\.(?:"
+        + "|".join(exts)
+        + r")"  # followed by a period, then 1 of the acceptable file extensions
+        r"|\${[\w/${}:.-]+}"  # One or more of these characters -- A-Za-z0-9_-/${}:. -- inside the variable curly brackets -- ${}
+        r")"  # end group 1
+        r"(?:\[(.*?)\])?"  # Optional layer reference for a usdz file as group 2. TODO: Figure out how to only match this if the extension matched was .usdz (e.g. foo.usdz[path/to/file/within/package.usd])
+        r"(?::SDF_FORMAT_ARGS:(.*?))?"  # Optional :SDF_FORMAT_ARGS:key=value&foo=bar, with the query string parameters as group 3
         r'(?:[\'"@]|\\\")'  # 1 of: single quote, double quote, backslash followed by double quote, or at symbol.
     )
