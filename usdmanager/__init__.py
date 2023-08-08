@@ -4097,8 +4097,17 @@ class AddressBar(QtWidgets.QLineEdit):
 class AddressBarCompleter(QtWidgets.QCompleter):
     """Custom completer for AddressBar."""
 
+# NOTE: for PySide6 support use qustom Qt.py 1.3.9
+# from forked branch https://github.com/ymesh/Qt.py.git@ymesh_dev
+# git clone --branch ymesh_dev https://github.com/ymesh/Qt.py.git
 
-class RecentFile(QtWidgets.QAction):
+if hasattr(Qt, "IsPySide6") and Qt.IsPySide6:
+    QActionClass = QtGui.QAction
+else:
+    QActionClass = QtWidgets.QAction
+
+# class RecentFile(QtWidgets.QAction):
+class RecentFile(QActionClass):
     """Action representing an individual file in the Recent Files or history menus."""
 
     openUrl = Signal(QtCore.QUrl)
