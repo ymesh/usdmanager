@@ -4098,7 +4098,7 @@ class AddressBarCompleter(QtWidgets.QCompleter):
     """Custom completer for AddressBar."""
 
 # NOTE: for PySide6 support use qustom Qt.py 1.3.9
-# from forked branch https://github.com/ymesh/Qt.py.git@ymesh_dev
+# from forked repo https://github.com/ymesh/Qt.py.git@ymesh_dev
 # git clone --branch ymesh_dev https://github.com/ymesh/Qt.py.git
 
 if hasattr(Qt, "IsPySide6") and Qt.IsPySide6:
